@@ -81,9 +81,10 @@ class SM:
 				self.compiler.AddToListVar('CFLAGS', '-Wno-unused')
 				self.compiler.AddToListVar('CFLAGS', '-Wno-switch')
 				self.compiler.AddToListVar('CFLAGS', '-Wno-implicit-exception-spec-mismatch')
-				self.compiler.AddToListVar('CFLAGS', '-Wno-builtin-declaration-mismatch')
-				self.compiler.AddToListVar('CFLAGS', '-Wno-unused-result')
-				self.compiler.AddToListVar('CFLAGS', '-Wno-stringop-truncation')
+				if self.vendor == 'gcc':
+					self.compiler.AddToListVar('CFLAGS', '-Wno-builtin-declaration-mismatch')
+					self.compiler.AddToListVar('CFLAGS', '-Wno-unused-result')
+					self.compiler.AddToListVar('CFLAGS', '-Wno-stringop-truncation')
 				self.compiler.AddToListVar('CFLAGS', '-msse')
 				self.compiler.AddToListVar('CFLAGS', '-g3')
 				self.compiler.AddToListVar('CFLAGS', '-m32')
