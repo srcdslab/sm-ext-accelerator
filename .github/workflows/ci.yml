@@ -1,6 +1,16 @@
 name: CI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
@@ -10,32 +20,32 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
-        sourcemod-version: [1.11-dev]
+        sourcemod-version: [1.12-dev]
         chromium-depot-tools-version: [08bb5c487f80147a236360ea50f4544890530779]
         chromium-breakpad-version: [e3af4457b8355fcf1814e6dfb6073a848b44a282]
         ambuild-version: [master]
         include:
           - os: ubuntu-20.04
             target-archs: x86,x86_64
-            sdks: sdk2013
+            sdks: tf2_sdk2013
 
     steps:
       - name: Install Linux packages
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install -yq --no-install-recommends g++-multilib
+          sudo apt install -yq --no-install-recommends g++-multilib zlib1g zlib1g-dev
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: extension
 
       - name: Checkout SourceMod
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: alliedmodders/sourcemod
           ref: ${{ matrix.sourcemod-version }}
@@ -43,7 +53,7 @@ jobs:
           submodules: recursive
 
       - name: Checkout sm-ext-common
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: srcdslab/sm-ext-common
           path: sourcemod/extensions/sm-ext-common
@@ -63,7 +73,7 @@ jobs:
           rm -rf ambuild
 
       - name: Checkout AMBuild
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: alliedmodders/ambuild
           path: ambuild
@@ -79,6 +89,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           cp depot_tools/.vpython3 .
+          export PATH="$PATH:$(pwd)/depot_tools"
           PYTHONDONTWRITEBYTECODE=1 ./depot_tools/vpython3 ./depot_tools/fetch.py --nohooks breakpad
 
           cd src
@@ -114,7 +125,7 @@ jobs:
           python ./build.py
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}
           path: extension/build/package
@@ -128,7 +139,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
 
       - name: Package
         run: |
