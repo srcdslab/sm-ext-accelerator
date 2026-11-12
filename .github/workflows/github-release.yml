@@ -1,0 +1,62 @@
+# srcdslab only (not in asherkin/accelerator): publish a GitHub release when a tag is pushed.
+# Kept out of release.yml so upstream syncs don't conflict. release.yml only uploads to
+# builds.limetech.io (skipped here, no UPLOAD_PASSWORD), so tags such as 2.6.0 got a release
+# with no assets.
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  main-ci:
+    uses: ./.github/workflows/ci.yml
+
+  github-release:
+    needs: [ main-ci ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Check that every package has the x86 and x86_64 binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pkg in accelerator_linux accelerator_sm113_linux accelerator_windows accelerator_sm113_windows; do
+            dir="artifacts/$pkg/addons/sourcemod/extensions"
+            case "$pkg" in *linux) ext=so ;; *) ext=dll ;; esac
+            file -b "$dir/accelerator.ext.$ext" | grep -Eq 'ELF 32-bit|PE32 executable' || { echo "$pkg: no x86 binary"; exit 1; }
+            file -b "$dir/x64/accelerator.ext.$ext" | grep -Eq 'ELF 64-bit|PE32\+' || { echo "$pkg: no x86_64 binary"; exit 1; }
+            echo "$pkg: x86 + x86_64 OK"
+          done
+
+      - name: Pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          pack() { tar -czf "release/sm-ext-accelerator-$TAG-$2.tar.gz" -C "artifacts/$1" addons; }
+          pack accelerator_linux         linux-sm-1.12
+          pack accelerator_sm113_linux   linux-sm-1.13
+          pack accelerator_windows       windows-sm-1.12
+          pack accelerator_sm113_windows windows-sm-1.13
+          ls -l release
+
+      - name: Create or update the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" release/* --title "$TAG" --generate-notes --verify-tag -R "$GITHUB_REPOSITORY"
+          fi
