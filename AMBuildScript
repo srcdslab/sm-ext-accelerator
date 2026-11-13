@@ -1,5 +1,5 @@
 # vim: set ts=2 sw=2 tw=99 noet ft=python: 
-import os, sys, shutil
+import os, re, sys, shutil
 
 def ResolveEnvPath(env, folder=None):
   if env in os.environ:
@@ -97,7 +97,23 @@ class AcceleratorConfig(object):
 
     if self.use_auto_versioning():
       cxx.defines += ['GIT_ACTION_BUILD']
-  
+
+    # Report the version from product.version: version.h only held a hard-coded fallback, so
+    # the 2.6.2 release packages still reported "2.6.0-manual" (checked on 2026-11-13).
+    major, minor, patch = self.product_version()
+    cxx.defines += [
+      'ACCELERATOR_VERSION_MAJOR={0}'.format(major),
+      'ACCELERATOR_VERSION_MINOR={0}'.format(minor),
+      'ACCELERATOR_VERSION_PATCH={0}'.format(patch),
+    ]
+
+  def product_version(self):
+    with open(os.path.join(builder.sourcePath, 'product.version'), 'r') as fp:
+      m = re.match(r'(\d+)\.(\d+)\.(\d+)', fp.read().strip())
+    if not m:
+      raise Exception('Could not parse product.version')
+    return m.groups()
+
   def configure_gcc(self, cxx):
     cxx.cflags += [
       '-fPIC',
