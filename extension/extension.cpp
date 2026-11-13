@@ -138,6 +138,11 @@ char crashGameDirectory[256];
 char crashSourceModVersion[32];
 char steamInf[1024];
 
+#if SMINTERFACE_EXTENSIONAPI_VERSION >= 9
+// Whether sp::BaseRuntime has the vtable layout of the SourcePawn headers we were built against.
+static bool baseRuntimeUsable = false;
+#endif
+
 char dumpStoragePath[512];
 char logPath[512];
 
@@ -1271,6 +1276,14 @@ bool Accelerator::SDK_OnLoad(char *error, size_t maxlength, bool late)
 	} while(false);
 #endif
 
+#if SMINTERFACE_EXTENSIONAPI_VERSION >= 9
+	baseRuntimeUsable = g_pSM->GetScriptingEngine()->GetApiVersion() == sp::kApiVersion;
+	if (!baseRuntimeUsable) {
+		smutils->LogMessage(myself, "WARNING: SourcePawn API version %u does not match the %u this build expects, plugin public functions will not be included in crash reports. Rebuild Accelerator against this SourceMod.",
+			g_pSM->GetScriptingEngine()->GetApiVersion(), sp::kApiVersion);
+	}
+#endif
+
 	plsys->AddPluginsListener(this);
 
 	IPluginIterator *iterator = plsys->GetPluginIterator();
@@ -1480,7 +1493,14 @@ void Accelerator::OnPluginLoaded(IPlugin *plugin)
 	}
 
 #if SMINTERFACE_EXTENSIONAPI_VERSION >= 9
-	// 1.13 moved publics enumeration onto sp::BaseRuntime.
+	// 1.13 moved publics enumeration onto sp::BaseRuntime. That class is internal to SourcePawn and
+	// its vtable is not stable: SourcePawn API 4 (SM 1.13.0.7443+) inserted AsV2() ahead of the
+	// publics accessors, so a build against older headers called FindPublicByName(NULL) and crashed
+	// the server on the first plugin load. Only use it when the running VM matches our headers.
+	if (!baseRuntimeUsable) {
+		return;
+	}
+
 	sp::BaseRuntime *publics = runtime->GetBaseRuntime();
 	if (!publics) {
 		return;
