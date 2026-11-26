@@ -636,7 +636,11 @@ class UploadThread: public IThread
 
 		int responseSize = data.GetSize();
 		char *response = new char[responseSize + 1];
-		strncpy(response, data.GetBuffer(), responseSize + 1);
+		/* GetBuffer() is NULL when the server sent an empty body (a 204, or a 200
+		   with nothing in it): strncpy would read it and crash the upload thread. */
+		if (responseSize > 0) {
+			memcpy(response, data.GetBuffer(), responseSize);
+		}
 		response[responseSize] = '\0';
 		while (responseSize > 0 && response[responseSize - 1] == '\n') {
 			response[--responseSize] = '\0';
@@ -696,7 +700,11 @@ class UploadThread: public IThread
 
 		int responseSize = data.GetSize();
 		char *response = new char[responseSize + 1];
-		strncpy(response, data.GetBuffer(), responseSize + 1);
+		/* GetBuffer() is NULL when the server sent an empty body (a 204, or a 200
+		   with nothing in it): strncpy would read it and crash the upload thread. */
+		if (responseSize > 0) {
+			memcpy(response, data.GetBuffer(), responseSize);
+		}
 		response[responseSize] = '\0';
 		while (responseSize > 0 && response[responseSize - 1] == '\n') {
 			response[--responseSize] = '\0';
@@ -917,7 +925,11 @@ class UploadThread: public IThread
 
 		int responseSize = data.GetSize();
 		char *response = new char[responseSize + 1];
-		strncpy(response, data.GetBuffer(), responseSize + 1);
+		/* GetBuffer() is NULL when the server sent an empty body (a 204, or a 200
+		   with nothing in it): strncpy would read it and crash the upload thread. */
+		if (responseSize > 0) {
+			memcpy(response, data.GetBuffer(), responseSize);
+		}
 		response[responseSize] = '\0';
 		while (responseSize > 0 && response[responseSize - 1] == '\n') {
 			response[--responseSize] = '\0';
